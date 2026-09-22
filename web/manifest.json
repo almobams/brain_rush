@@ -1,0 +1,35 @@
+{
+    "name": "Brain Rush",
+    "short_name": "Brain Rush",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#080F20",
+    "theme_color": "#080F20",
+    "description": "60 seconds. Four ways to think.",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Rush-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Rush-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Rush-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Rush-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}
