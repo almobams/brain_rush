@@ -8,6 +8,8 @@ import 'core/store.dart';
 import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
 import 'localization/strings.dart';
+import 'monetization/ad_service.dart';
+import 'monetization/purchase_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,15 +18,33 @@ Future<void> main() async {
   runApp(
     ProviderScope(
       overrides: [preferencesProvider.overrideWithValue(preferences)],
-      child: const BrainRushApp(),
+      child: const BrainRushApp(initializeMonetization: true),
     ),
   );
 }
 
-class BrainRushApp extends ConsumerWidget {
-  const BrainRushApp({super.key});
+class BrainRushApp extends ConsumerStatefulWidget {
+  const BrainRushApp({super.key, this.initializeMonetization = false});
+  final bool initializeMonetization;
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<BrainRushApp> createState() => _BrainRushAppState();
+}
+
+class _BrainRushAppState extends ConsumerState<BrainRushApp> {
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.initializeMonetization) return;
+    // Neither the store nor consent may delay the first frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(purchaseServiceProvider).initialize();
+      ref.read(adServiceProvider).initialize();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final store = ref.watch(storeProvider);
     return MaterialApp(
       debugShowCheckedModeBanner: false,

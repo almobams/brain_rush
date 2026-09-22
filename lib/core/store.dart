@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../game/models.dart';
 import '../game/progression.dart';
+import '../monetization/ad_policy.dart';
 
 final preferencesProvider = Provider<SharedPreferences>(
   (ref) => throw UnimplementedError(),
@@ -23,6 +24,8 @@ class AppStore extends ChangeNotifier {
   final SharedPreferences preferences;
   PlayerStats stats = PlayerStats();
   Map<String, DailyChallengeResult> daily = {};
+  AdSchedule adSchedule = AdSchedule();
+  final Set<String> claimedXpSessions = {};
   String language = 'en';
   ThemeMode themeMode = ThemeMode.dark;
   bool haptics = true, sound = false, saveFailed = false;
@@ -53,6 +56,15 @@ class AppStore extends ChangeNotifier {
       );
       haptics = data['haptics'] as bool? ?? true;
       sound = data['sound'] as bool? ?? false;
+      final ads = data['ads'] as Map? ?? {};
+      adSchedule = AdSchedule(
+        normalGames: ads['normalGames'] as int? ?? 0,
+        lastShownGame: ads['lastShownGame'] as int? ?? 0,
+        lastShownAt: DateTime.tryParse(ads['lastShownAt'] as String? ?? ''),
+      );
+      claimedXpSessions.addAll(
+        (data['claimedXpSessions'] as List? ?? []).whereType<String>(),
+      );
       final saved = data['daily'] as Map? ?? {};
       daily = saved.map(
         (key, value) => MapEntry(
@@ -87,6 +99,12 @@ class AppStore extends ChangeNotifier {
       'theme': themeMode.name,
       'haptics': haptics,
       'sound': sound,
+      'ads': {
+        'normalGames': adSchedule.normalGames,
+        'lastShownGame': adSchedule.lastShownGame,
+        'lastShownAt': adSchedule.lastShownAt?.toIso8601String(),
+      },
+      'claimedXpSessions': claimedXpSessions.toList(),
     });
     _pending = _pending.then((_) async {
       try {
@@ -111,6 +129,7 @@ class AppStore extends ChangeNotifier {
       firstDailyCompletion: daily[date] == null,
     );
     stats.totalXp += earnedXp;
+    adSchedule.completed(session.mode);
     stats.totalGames++;
     stats.totalScore += session.score;
     stats.bestScore = max(stats.bestScore, session.score);
@@ -155,5 +174,17 @@ class AppStore extends ChangeNotifier {
       isNewBest: isNewBest,
       previousBest: previousBest,
     );
+  }
+
+  Future<bool> claimXpBonus(String sessionId, int xp) async {
+    if (xp <= 0 || !claimedXpSessions.add(sessionId)) return false;
+    stats.totalXp += xp;
+    await save();
+    return true;
+  }
+
+  Future<void> markInterstitialShown(DateTime when) async {
+    adSchedule.shown(when);
+    await save();
   }
 }

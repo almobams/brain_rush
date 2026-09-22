@@ -1,2 +1,5 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
 #include "Generated.xcconfig"
+
+// Set ADMOB_APP_ID to the real iOS AdMob app ID before enabling release ads.
+ADMOB_APP_ID=

@@ -9,6 +9,9 @@ import '../theme/app_theme.dart';
 import '../widgets/components.dart';
 import '../widgets/effects.dart';
 import 'game_screen.dart';
+import '../monetization/ad_service.dart';
+import '../monetization/purchase_service.dart';
+import 'premium_screen.dart';
 
 class DailyScreen extends ConsumerWidget {
   const DailyScreen({super.key});
@@ -180,6 +183,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final store = ref.watch(storeProvider);
+    final ads = ref.watch(adServiceProvider);
     return RushScaffold(
       title: context.tr('settings'),
       child: SingleChildScrollView(
@@ -269,13 +273,26 @@ class SettingsScreen extends ConsumerWidget {
             for (final entry in [
               ('privacy', 'privacyBody'),
               ('terms', 'termsBody'),
-              ('restore', 'placeholder'),
             ])
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                 title: Text(context.tr(entry.$1)),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => info(context, entry.$1, entry.$2),
+              ),
+            ListTile(
+              title: Text(context.tr('restore')),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => restorePurchasesWithFeedback(
+                context,
+                ref.read(purchaseServiceProvider),
+              ),
+            ),
+            if (ads.privacyChoicesAvailable)
+              ListTile(
+                title: Text(context.tr('privacyChoices')),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: ads.showPrivacyChoices,
               ),
             const SizedBox(height: 24),
             Center(

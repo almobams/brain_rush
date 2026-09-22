@@ -9,6 +9,7 @@ import '../widgets/components.dart';
 import '../widgets/effects.dart';
 import 'game_screen.dart';
 import 'secondary_screens.dart';
+import 'premium_screen.dart';
 
 void openScreen(BuildContext context, Widget screen) =>
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
@@ -147,30 +148,33 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: 14),
             BrainCard(
               padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  const Icon(Icons.auto_awesome_rounded, color: violet),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(context.tr('premium'), style: text.titleMedium),
-                        Text(
-                          context.tr('premiumDetail'),
-                          style: text.bodySmall,
-                        ),
-                      ],
+              child: InkWell(
+                onTap: () => openScreen(context, const PremiumScreen()),
+                child: Row(
+                  children: [
+                    const Icon(Icons.auto_awesome_rounded, color: violet),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(context.tr('premium'), style: text.titleMedium),
+                          Text(
+                            context.tr('premiumDetail'),
+                            style: text.bodySmall,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    context.tr('soon'),
-                    style: text.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
+                    const SizedBox(width: 8),
+                    Text(
+                      context.tr('explore'),
+                      style: text.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             if (store.saveFailed)

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/store.dart';
+import '../monetization/ad_service.dart';
+import '../monetization/purchase_service.dart';
 import '../game/models.dart';
 import '../game/progression.dart';
 import '../localization/strings.dart';
@@ -11,13 +13,36 @@ import '../widgets/effects.dart';
 import 'game_screen.dart';
 import 'secondary_screens.dart';
 
-class ResultsScreen extends ConsumerWidget {
+class ResultsScreen extends ConsumerStatefulWidget {
   const ResultsScreen({super.key, required this.session, required this.award});
   final GameSession session;
   final ProgressAward award;
+  @override
+  ConsumerState<ResultsScreen> createState() => _ResultsScreenState();
+}
+
+class _ResultsScreenState extends ConsumerState<ResultsScreen> {
+  bool leaving = false;
+
+  Future<void> _leave(VoidCallback destination) async {
+    if (leaving) return;
+    leaving = true;
+    final store = ref.read(storeProvider);
+    final premium = ref.read(purchaseServiceProvider).owned;
+    if (store.adSchedule.eligible(
+      widget.session.mode,
+      premium,
+      DateTime.now(),
+    )) {
+      final shown = await ref.read(adServiceProvider).showInterstitial();
+      if (shown) await store.markInterstitialShown(DateTime.now());
+    }
+    if (mounted) destination();
+  }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final session = widget.session, award = widget.award;
     final text = Theme.of(context).textTheme;
     final store = ref.watch(storeProvider);
     final compact = MediaQuery.sizeOf(context).height < 700;
@@ -141,11 +166,15 @@ class ResultsScreen extends ConsumerWidget {
                 GamePrimaryButton(
                   label: context.tr('again'),
                   icon: Icons.replay_rounded,
-                  onPressed: () => Navigator.of(context).pushReplacement(
-                    MaterialPageRoute<void>(
-                      builder: (_) => GameScreen(mode: session.mode),
-                    ),
-                  ),
+                  onPressed: leaving
+                      ? null
+                      : () => _leave(
+                          () => Navigator.of(context).pushReplacement(
+                            MaterialPageRoute<void>(
+                              builder: (_) => GameScreen(mode: session.mode),
+                            ),
+                          ),
+                        ),
                 ),
                 const SizedBox(height: 6),
                 Row(
@@ -153,19 +182,27 @@ class ResultsScreen extends ConsumerWidget {
                   children: [
                     Flexible(
                       child: TextButton(
-                        onPressed: () => Navigator.of(context).pushReplacement(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const DailyScreen(),
-                          ),
-                        ),
+                        onPressed: leaving
+                            ? null
+                            : () => _leave(
+                                () => Navigator.of(context).pushReplacement(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const DailyScreen(),
+                                  ),
+                                ),
+                              ),
                         child: Text(context.tr('daily')),
                       ),
                     ),
                     Flexible(
                       child: TextButton(
-                        onPressed: () =>
-                            Navigator.of(context)
-                                .popUntil((route) => route.isFirst),
+                        onPressed: leaving
+                            ? null
+                            : () => _leave(
+                                () =>
+                                    Navigator.of(context)
+                                        .popUntil((route) => route.isFirst),
+                              ),
                         child: Text(context.tr('home')),
                       ),
                     ),
