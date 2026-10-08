@@ -1,7 +1,7 @@
 name: brain_rush
 description: A polished, offline 60-second brain-training game.
 publish_to: none
-version: 1.0.0+3
+version: 1.0.0+4
 environment:
   sdk: ^3.13.3
 dependencies:
