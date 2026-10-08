@@ -46,3 +46,12 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Firebase local state
+.firebase/
+
+# Generated store media
+store_assets/final/
+store_assets/source_capture/
+store_assets/raw/
+store_assets/video/

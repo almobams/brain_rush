@@ -10,22 +10,39 @@ import 'theme/app_theme.dart';
 import 'localization/strings.dart';
 import 'monetization/ad_service.dart';
 import 'monetization/purchase_service.dart';
+import 'backend/daily_ranking_service.dart';
+import 'localization/languages.dart';
+import 'screens/onboarding_screen.dart';
+import 'reminders/reminder_host.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   final preferences = await SharedPreferences.getInstance();
+  try {
+    await InstallationIdentity(preferences).getOrCreate();
+  } catch (_) {
+    // Local gameplay remains available if preferences cannot be written.
+  }
   runApp(
     ProviderScope(
       overrides: [preferencesProvider.overrideWithValue(preferences)],
-      child: const BrainRushApp(initializeMonetization: true),
+      child: const BrainRushApp(
+        initializeMonetization: true,
+        initializeReminders: true,
+      ),
     ),
   );
 }
 
 class BrainRushApp extends ConsumerStatefulWidget {
-  const BrainRushApp({super.key, this.initializeMonetization = false});
+  const BrainRushApp({
+    super.key,
+    this.initializeMonetization = false,
+    this.initializeReminders = false,
+  });
   final bool initializeMonetization;
+  final bool initializeReminders;
   @override
   ConsumerState<BrainRushApp> createState() => _BrainRushAppState();
 }
@@ -52,10 +69,19 @@ class _BrainRushAppState extends ConsumerState<BrainRushApp> {
       theme: appTheme(Brightness.light),
       darkTheme: appTheme(Brightness.dark),
       themeMode: store.themeMode,
-      locale: Locale(store.language),
-      supportedLocales: const [Locale('en'), Locale('ar')],
+      locale: AppLanguages.localeFor(store.language),
+      supportedLocales: AppLanguages.supportedLocales,
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      home: const HomeScreen(),
+      home: widget.initializeReminders
+          ? ReminderHost(
+              onboardingCompleted: store.onboardingCompleted,
+              child: store.onboardingCompleted
+                  ? const HomeScreen()
+                  : const OnboardingScreen(),
+            )
+          : store.onboardingCompleted
+          ? const HomeScreen()
+          : const OnboardingScreen(),
     );
   }
 }

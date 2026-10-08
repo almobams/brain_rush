@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "captures": [
+    {
+      "platform": "android",
+      "locale": "en",
+      "device": "Pixel_8_Pro_API_36",
+      "device_id": "emulator-5554",
+      "os": "Android 16 (API 36)",
+      "source_files": [
+        "store_assets/source_capture/video/android/en/brain_rush_gameplay_raw.mp4",
+        "store_assets/source_capture/video/android/en/brain_rush_tail_raw.mp4"
+      ],
+      "record_commands": [
+        "adb shell screenrecord --size 720x1600 --bit-rate 8000000 --time-limit 80 /sdcard/brain_rush_en_full.mp4",
+        "adb shell screenrecord --size 720x1600 --bit-rate 8000000 --time-limit 12 /sdcard/brain_rush_en_tail.mp4"
+      ],
+      "interaction_method": "adb shell input tap against the running installed profile app",
+      "content": "Home, live Rush questions, score and timer movement, Results, tap to Daily Challenge, Daily rank"
+    },
+    {
+      "platform": "android",
+      "locale": "ar",
+      "device": "Pixel_8_Pro_API_36",
+      "device_id": "emulator-5554",
+      "os": "Android 16 (API 36)",
+      "source_files": [
+        "store_assets/source_capture/video/android/ar/brain_rush_gameplay_raw.mp4",
+        "store_assets/source_capture/video/android/ar/brain_rush_tail_raw.mp4"
+      ],
+      "record_commands": [
+        "adb shell screenrecord --size 720x1600 --bit-rate 8000000 --time-limit 32 /sdcard/brain_rush_ar_main.mp4",
+        "adb shell screenrecord --size 720x1600 --bit-rate 8000000 --time-limit 12 /sdcard/brain_rush_ar_tail.mp4"
+      ],
+      "interaction_method": "adb shell input tap against the running installed profile app in Arabic RTL",
+      "content": "Arabic RTL Home, live Rush questions, score and timer movement, Arabic Results, tap to Arabic Daily Challenge, Daily rank"
+    },
+    {
+      "platform": "ios",
+      "locale": "en",
+      "device": "iPhone 17 Pro Max",
+      "device_id": "44A0E9FB-E409-4956-90C2-4D8A16784230",
+      "os": "iOS 26.5",
+      "source_files": [
+        "store_assets/source_capture/video/ios/en/brain_rush_raw.mov"
+      ],
+      "record_commands": [
+        "xcrun simctl io 44A0E9FB-E409-4956-90C2-4D8A16784230 recordVideo --codec=h264 store_assets/source_capture/video/ios/en/brain_rush_raw.mov"
+      ],
+      "interaction_method": "integration_test/store_preview_test.dart on the running Simulator app with STORE_CAPTURE_LOCALE=en",
+      "content": "Home, real taps, live Rush questions, score and timer movement, Results, tap to Daily Challenge, Daily rank"
+    },
+    {
+      "platform": "ios",
+      "locale": "ar",
+      "device": "iPhone 17 Pro Max",
+      "device_id": "44A0E9FB-E409-4956-90C2-4D8A16784230",
+      "os": "iOS 26.5",
+      "source_files": [
+        "store_assets/source_capture/video/ios/ar/brain_rush_raw.mov"
+      ],
+      "record_commands": [
+        "xcrun simctl io 44A0E9FB-E409-4956-90C2-4D8A16784230 recordVideo --codec=h264 store_assets/source_capture/video/ios/ar/brain_rush_raw.mov"
+      ],
+      "interaction_method": "integration_test/store_preview_test.dart on the running Simulator app with STORE_CAPTURE_LOCALE=ar",
+      "content": "Arabic RTL Home, real taps, live Rush questions, score and timer movement, Arabic Results, tap to Arabic Daily Challenge, Daily rank"
+    }
+  ]
+}

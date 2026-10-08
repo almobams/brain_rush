@@ -113,17 +113,42 @@ class DailyChallengeResult {
     this.score,
     this.correct,
     this.wrong,
-    this.completed,
-  );
+    this.completed, {
+    this.attemptsUsed = 1,
+    int? lastScore,
+    this.unlockedAttempts = 1,
+    this.bestAttemptNo = 3,
+  }) : lastScore = lastScore ?? score;
   final String date;
   final int score, correct, wrong;
   final bool completed;
+  final int attemptsUsed, lastScore, unlockedAttempts, bestAttemptNo;
+  int get attemptsRemaining => (3 - attemptsUsed).clamp(0, 3);
+  int get attemptNumber => attemptsUsed;
+
+  DailyChallengeResult copyWith({int? unlockedAttempts}) =>
+      DailyChallengeResult(
+        date,
+        score,
+        correct,
+        wrong,
+        completed,
+        attemptsUsed: attemptsUsed,
+        lastScore: lastScore,
+        unlockedAttempts: unlockedAttempts ?? this.unlockedAttempts,
+        bestAttemptNo: bestAttemptNo,
+      );
+
   Map<String, dynamic> toJson() => {
     'date': date,
     'score': score,
     'correct': correct,
     'wrong': wrong,
     'completed': completed,
+    'attemptsUsed': attemptsUsed,
+    'lastScore': lastScore,
+    'unlockedAttempts': unlockedAttempts,
+    'bestAttemptNo': bestAttemptNo,
   };
   factory DailyChallengeResult.fromJson(Map<String, dynamic> j) =>
       DailyChallengeResult(
@@ -132,6 +157,14 @@ class DailyChallengeResult {
         j['correct'] as int,
         j['wrong'] as int,
         j['completed'] as bool,
+        attemptsUsed:
+            (j['attemptsUsed'] as int? ??
+                    ((j['completed'] as bool? ?? false) ? 1 : 0))
+                .clamp(0, 3),
+        lastScore: j['lastScore'] as int?,
+        unlockedAttempts: (j['unlockedAttempts'] as int? ?? 1).clamp(1, 3),
+        // Older snapshots cannot identify which attempt produced their best.
+        bestAttemptNo: (j['bestAttemptNo'] as int? ?? 3).clamp(1, 3),
       );
 }
 

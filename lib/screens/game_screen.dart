@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,10 +9,13 @@ import '../game/controller.dart';
 import '../game/models.dart';
 import '../game/progression.dart';
 import '../localization/strings.dart';
+import '../monetization/purchase_service.dart';
+import '../backend/daily_ranking_service.dart';
 import '../widgets/game_panels.dart';
 import '../widgets/components.dart';
 import '../widgets/effects.dart';
 import 'results_screen.dart';
+import 'secondary_screens.dart';
 
 final gameFactoryProvider = Provider<GameController Function(GameMode)>(
   (ref) =>
@@ -36,6 +41,18 @@ class _GameScreenState extends ConsumerState<GameScreen>
     game.addListener(_update);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        if (widget.mode == GameMode.daily &&
+            !ref
+                .read(storeProvider)
+                .canStartDaily(
+                  game.startedAt,
+                  removeAdsOwned: ref.read(purchaseServiceProvider).owned,
+                )) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute<void>(builder: (_) => const DailyScreen()),
+          );
+          return;
+        }
         feedback.play(FeedbackCue.tap);
         game.start();
       }
@@ -70,6 +87,15 @@ class _GameScreenState extends ConsumerState<GameScreen>
     final store = ref.read(storeProvider);
     final ProgressAward award = await store.record(game.session);
     if (!mounted) return;
+    if (widget.mode == GameMode.daily) {
+      // The local completion, XP, and attempt count are already durable.
+      // Ranking runs independently and never holds up the Results screen.
+      unawaited(
+        ref
+            .read(dailyRankingProvider)
+            .onCompleted(game.session, store.daily[dateKey(game.startedAt)]),
+      );
+    }
     feedback.play(
       award.rankChanged || award.leveledUp
           ? FeedbackCue.levelUp

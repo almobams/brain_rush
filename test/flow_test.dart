@@ -7,9 +7,57 @@ import 'package:brain_rush/core/store.dart';
 import 'package:brain_rush/game/controller.dart';
 import 'package:brain_rush/game/models.dart';
 import 'package:brain_rush/localization/strings.dart';
+import 'package:brain_rush/monetization/purchase_service.dart';
 import 'package:brain_rush/screens/game_screen.dart';
 import 'package:brain_rush/widgets/components.dart';
 import 'package:brain_rush/widgets/effects.dart';
+import 'package:brain_rush/backend/daily_ranking_service.dart';
+import 'package:brain_rush/widgets/daily_rank_panel.dart';
+
+class _FlowRankingService implements DailyRankingService {
+  int submissions = 0;
+  int? submittedAttemptNo;
+  @override
+  bool get configured => true;
+  @override
+  Future<int?> submitBest(
+    String installationId,
+    String date,
+    int score,
+    int attemptNo,
+  ) async {
+    submissions++;
+    submittedAttemptNo = attemptNo;
+    return score;
+  }
+
+  @override
+  Future<DailyRank?> getRank(String installationId, String date) async =>
+      const DailyRank(
+        bestScore: 11,
+        highestScore: 15,
+        rank: 1,
+        participantCount: 1,
+        topPercent: 100,
+      );
+}
+
+class _OwnedPurchases extends PurchaseService {
+  @override
+  bool get owned => true;
+  @override
+  bool get loading => false;
+  @override
+  bool get pending => false;
+  @override
+  String? get price => null;
+  @override
+  Future<void> initialize() async {}
+  @override
+  Future<void> buy() async {}
+  @override
+  Future<RestoreResult> restore() async => RestoreResult.restored;
+}
 
 void main() {
   for (final language in ['en', 'ar']) {
@@ -24,9 +72,12 @@ void main() {
         var elapsed = Duration.zero;
         late GameController active;
         final prefs = await SharedPreferences.getInstance();
+        final rankingService = _FlowRankingService();
         var container = ProviderContainer(
           overrides: [
             preferencesProvider.overrideWithValue(prefs),
+            dailyRankingServiceProvider.overrideWithValue(rankingService),
+            purchaseServiceProvider.overrideWith((ref) => _OwnedPurchases()),
             gameFactoryProvider.overrideWithValue((mode) {
               elapsed = Duration.zero;
               active = GameController(mode: mode, elapsed: () => elapsed);
@@ -35,6 +86,7 @@ void main() {
           ],
         );
         container.read(storeProvider).language = language;
+        container.read(storeProvider).onboardingCompleted = true;
         final strings = Strings(language);
         Future<void> settle() async {
           for (var frame = 0; frame < 5; frame++) {
@@ -134,7 +186,25 @@ void main() {
         expect(find.byType(Celebration), findsOneWidget);
         final date = dateKey(active.startedAt);
         expect(container.read(storeProvider).daily[date]!.score, 11);
-        await tap(find.widgetWithText(GamePrimaryButton, strings.t('again')));
+        expect(rankingService.submissions, 1);
+        expect(rankingService.submittedAttemptNo, 1);
+        expect(find.text(strings.t('yourRankToday')), findsOneWidget);
+        expect(
+          tester.getTopLeft(find.byType(DailyRankPanel)).dy,
+          greaterThan(
+            tester.getTopLeft(find.text(strings.t('currentAttemptScore'))).dy,
+          ),
+        );
+        expect(
+          tester.getTopLeft(find.byType(DailyRankPanel)).dy,
+          lessThan(tester.getTopLeft(find.text(strings.t('accuracy'))).dy),
+        );
+        await tap(
+          find.widgetWithText(GamePrimaryButton, strings.t('retryDaily')),
+        );
+        await tap(
+          find.widgetWithText(GamePrimaryButton, strings.t('replayDaily')),
+        );
         expect(active.score, 0);
         expect(active.remaining, 60);
         expect(active.question.answers, first.answers);
@@ -149,13 +219,14 @@ void main() {
         expect(find.text(strings.t('timesUp')), findsOneWidget);
         expect(container.read(storeProvider).stats.totalGames, 2);
         expect(container.read(storeProvider).daily[date]!.score, 11);
+        expect(rankingService.submissions, 1);
         await tap(find.text(strings.t('home')));
         await tap(find.text(strings.t('statistics')));
         expect(find.text(strings.t('totalGames')), findsOneWidget);
         expect(find.text('11'), findsOneWidget);
         Navigator.of(tester.element(find.byType(RushScaffold))).pop();
         await settle();
-        await tap(find.widgetWithText(TextButton, strings.t('settings')));
+        await tap(find.byTooltip(strings.t('settings')));
         await tap(find.text(strings.t('light')));
         expect(container.read(storeProvider).themeMode, ThemeMode.light);
         final haptics = find.byWidgetPredicate(
@@ -174,6 +245,7 @@ void main() {
             preferencesProvider.overrideWithValue(
               await SharedPreferences.getInstance(),
             ),
+            dailyRankingServiceProvider.overrideWithValue(rankingService),
           ],
         );
         await tester.pumpWidget(

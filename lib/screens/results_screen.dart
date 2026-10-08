@@ -1,15 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/store.dart';
 import '../monetization/ad_service.dart';
+import '../monetization/ad_diagnostics.dart';
 import '../monetization/purchase_service.dart';
 import '../game/models.dart';
 import '../game/progression.dart';
 import '../localization/strings.dart';
+import '../localization/languages.dart';
 import '../theme/app_theme.dart';
 import '../widgets/components.dart';
 import '../widgets/effects.dart';
+import '../backend/daily_ranking_service.dart';
+import '../widgets/daily_rank_panel.dart';
+import '../sharing/result_share_data.dart';
+import '../sharing/result_share_service.dart';
 import 'game_screen.dart';
 import 'secondary_screens.dart';
 
@@ -23,19 +31,68 @@ class ResultsScreen extends ConsumerStatefulWidget {
 
 class _ResultsScreenState extends ConsumerState<ResultsScreen> {
   bool leaving = false;
+  bool sharing = false;
+
+  Future<void> _share() async {
+    if (sharing) return;
+    setState(() => sharing = true);
+    try {
+      final store = ref.read(storeProvider);
+      final dailyResult = widget.session.mode == GameMode.daily
+          ? store.daily[dateKey(widget.session.startedAt)]
+          : null;
+      final data = widget.session.mode == GameMode.daily
+          ? ResultShareData.daily(
+              result: dailyResult!,
+              rank:
+                  ref
+                      .read(dailyRankingProvider)
+                      .unavailableFor(dailyResult.date)
+                  ? null
+                  : ref.read(dailyRankingProvider).rankFor(dailyResult.date),
+              playerName: store.playerName,
+            )
+          : ResultShareData.rush(
+              session: widget.session,
+              award: widget.award,
+              personalBest: store.stats.bestScore,
+              playerName: store.playerName,
+            );
+      await ref.read(resultShareServiceProvider).share(context, data);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.tr('shareUnavailable'))));
+      }
+    } finally {
+      if (mounted) setState(() => sharing = false);
+    }
+  }
 
   Future<void> _leave(VoidCallback destination) async {
     if (leaving) return;
     leaving = true;
     final store = ref.read(storeProvider);
     final premium = ref.read(purchaseServiceProvider).owned;
-    if (store.adSchedule.eligible(
+    final reason = store.adSchedule.blockedReason(
       widget.session.mode,
       premium,
       DateTime.now(),
-    )) {
+    );
+    adDebugLog(
+      'Results exit: mode=${widget.session.mode.name}, '
+      'normalGames=${store.adSchedule.normalGames}, '
+      'lastShownGame=${store.adSchedule.lastShownGame}, '
+      'previousAdShown=${store.adSchedule.lastShownAt != null}, '
+      'premium=$premium, eligible=${reason == null}'
+      '${reason == null ? '' : ', reason=$reason'}',
+    );
+    if (reason == null) {
       final shown = await ref.read(adServiceProvider).showInterstitial();
       if (shown) await store.markInterstitialShown(DateTime.now());
+    } else {
+      adDebugLog('interstitial show skipped: $reason');
     }
     if (mounted) destination();
   }
@@ -45,6 +102,12 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
     final session = widget.session, award = widget.award;
     final text = Theme.of(context).textTheme;
     final store = ref.watch(storeProvider);
+    final dailyResult = session.mode == GameMode.daily
+        ? store.daily[dateKey(session.startedAt)]
+        : null;
+    final ranking = session.mode == GameMode.daily
+        ? ref.watch(dailyRankingProvider)
+        : null;
     final compact = MediaQuery.sizeOf(context).height < 700;
     final fastAnswers = session.results
         .where(
@@ -71,7 +134,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                 Text(
                   context.tr('timesUp'),
                   style: text.titleLarge?.copyWith(
-                    letterSpacing: store.language == 'ar' ? 0 : 3,
+                    letterSpacing: AppLanguages.isRtl(store.language) ? 0 : 3,
                   ),
                 ),
                 SizedBox(height: compact ? 8 : 16),
@@ -84,7 +147,11 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                       children: [
                         if (award.isNewBest)
                           Text(
-                            context.tr('newBest'),
+                            store.playerName == null
+                                ? context.tr('newBest')
+                                : context
+                                      .tr('newBestNamed')
+                                      .replaceAll('{name}', store.playerName!),
                             style: text.labelLarge?.copyWith(
                               color: streakAmber,
                             ),
@@ -106,7 +173,14 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                             ),
                           ),
                         ),
-                        Text(context.tr('points'), style: text.labelMedium),
+                        Text(
+                          context.tr(
+                            session.mode == GameMode.daily
+                                ? 'currentAttemptScore'
+                                : 'points',
+                          ),
+                          style: text.labelMedium,
+                        ),
                         const SizedBox(height: 6),
                         Text(
                           comparison,
@@ -118,6 +192,18 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                   ),
                 ),
                 SizedBox(height: compact ? 10 : 16),
+                if (dailyResult != null) ...[
+                  DailyRankPanel(
+                    rank: ranking!.rankFor(dailyResult.date),
+                    localBest: dailyResult.score,
+                    loading: ranking.loadingFor(dailyResult.date),
+                    unavailable: ranking.unavailableFor(dailyResult.date),
+                    playerName: store.playerName,
+                    onRefresh: () => unawaited(ranking.refresh(dailyResult)),
+                    compact: compact,
+                  ),
+                  SizedBox(height: compact ? 10 : 16),
+                ],
                 Row(
                   children: [
                     Expanded(
@@ -162,19 +248,54 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                   totalXp: award.totalXp,
                   previousXp: award.previousXp,
                 ),
+                if (dailyResult != null) ...[
+                  SizedBox(height: compact ? 8 : 12),
+                  Text(
+                    dailyResult.attemptsRemaining == 0
+                        ? context.tr('allAttemptsUsed')
+                        : dailyResult.attemptsRemaining == 1
+                        ? context.tr('oneAttemptLeft')
+                        : context.tr('twoAttemptsLeft'),
+                    textAlign: TextAlign.center,
+                    style: text.bodyMedium,
+                  ),
+                ],
                 SizedBox(height: compact ? 14 : 22),
-                GamePrimaryButton(
-                  label: context.tr('again'),
-                  icon: Icons.replay_rounded,
-                  onPressed: leaving
-                      ? null
-                      : () => _leave(
-                          () => Navigator.of(context).pushReplacement(
-                            MaterialPageRoute<void>(
-                              builder: (_) => GameScreen(mode: session.mode),
+                if (session.mode != GameMode.daily ||
+                    (dailyResult?.attemptsRemaining ?? 0) > 0)
+                  GamePrimaryButton(
+                    label: context.tr(
+                      session.mode == GameMode.daily ? 'retryDaily' : 'again',
+                    ),
+                    icon: Icons.replay_rounded,
+                    onPressed: leaving
+                        ? null
+                        : () => _leave(
+                            () => Navigator.of(context).pushReplacement(
+                              MaterialPageRoute<void>(
+                                builder: (_) => session.mode == GameMode.daily
+                                    ? const DailyScreen()
+                                    : const GameScreen(mode: GameMode.rush),
+                              ),
                             ),
                           ),
-                        ),
+                  ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    key: const Key('shareResultButton'),
+                    onPressed: sharing ? null : _share,
+                    icon: const Icon(Icons.ios_share_rounded),
+                    label: Text(context.tr('share')),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: energyCyan,
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      side: BorderSide(
+                        color: energyCyan.withValues(alpha: .55),
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Row(

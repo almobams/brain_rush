@@ -1,4 +1,4 @@
-package com.brainrush.brain_rush
+package com.almobairikdevs.brainrush
 
 import android.media.AudioManager
 import android.media.ToneGenerator

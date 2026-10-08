@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../game/models.dart';
 import '../game/progression.dart';
 import '../monetization/ad_policy.dart';
+import '../localization/languages.dart';
 
 final preferencesProvider = Provider<SharedPreferences>(
   (ref) => throw UnimplementedError(),
@@ -27,6 +28,11 @@ class AppStore extends ChangeNotifier {
   AdSchedule adSchedule = AdSchedule();
   final Set<String> claimedXpSessions = {};
   String language = 'en';
+  String? playerName;
+  bool onboardingCompleted = false;
+  bool dailyRemindersEnabled = false;
+  bool dailyReminderPromptHandled = false;
+  static const maxPlayerNameLength = 20;
   ThemeMode themeMode = ThemeMode.dark;
   bool haptics = true, sound = false, saveFailed = false;
   Future<void> _pending = Future.value();
@@ -45,11 +51,23 @@ class AppStore extends ChangeNotifier {
     try {
       final raw = preferences.getString('brain_rush_v1');
       if (raw == null) return;
+      onboardingCompleted = true;
       final data = jsonDecode(raw) as Map<String, dynamic>;
+      // An existing save predates onboarding; never interrupt that player.
+      onboardingCompleted = data['onboardingCompleted'] as bool? ?? true;
+      dailyRemindersEnabled = data['dailyRemindersEnabled'] as bool? ?? false;
+      dailyReminderPromptHandled =
+          data['dailyReminderPromptHandled'] as bool? ?? false;
+      final savedName = data['playerName'] as String?;
+      final trimmedName = savedName?.trim();
+      playerName = trimmedName == null || trimmedName.isEmpty
+          ? null
+          : trimmedName;
       stats = PlayerStats.fromJson(
         Map<String, dynamic>.from(data['stats'] as Map),
       );
-      language = data['language'] == 'ar' ? 'ar' : 'en';
+      final savedLanguage = data['language'] as String? ?? 'en';
+      language = AppLanguages.contains(savedLanguage) ? savedLanguage : 'en';
       themeMode = ThemeMode.values.firstWhere(
         (t) => t.name == data['theme'],
         orElse: () => ThemeMode.dark,
@@ -91,11 +109,39 @@ class AppStore extends ChangeNotifier {
     return days > 1 ? 0 : stats.dailyStreak;
   }
 
+  DailyChallengeResult dailyStatus(DateTime date) =>
+      daily[dateKey(date)] ??
+      DailyChallengeResult(dateKey(date), 0, 0, 0, false, attemptsUsed: 0);
+
+  bool canStartDaily(DateTime date, {required bool removeAdsOwned}) {
+    final result = dailyStatus(date);
+    return result.attemptsUsed < 3 &&
+        (removeAdsOwned || result.attemptsUsed < result.unlockedAttempts);
+  }
+
+  Future<bool> unlockDailyRetry(DateTime date) async {
+    final key = dateKey(date);
+    final result = daily[key];
+    if (result == null ||
+        result.attemptsUsed == 0 ||
+        result.attemptsUsed >= 3 ||
+        result.unlockedAttempts > result.attemptsUsed) {
+      return false;
+    }
+    daily[key] = result.copyWith(unlockedAttempts: result.attemptsUsed + 1);
+    await save();
+    return true;
+  }
+
   Future<void> save() {
     final snapshot = jsonEncode({
       'stats': stats.toJson(),
       'daily': daily.map((k, v) => MapEntry(k, v.toJson())),
       'language': language,
+      'playerName': playerName,
+      'onboardingCompleted': onboardingCompleted,
+      'dailyRemindersEnabled': dailyRemindersEnabled,
+      'dailyReminderPromptHandled': dailyReminderPromptHandled,
       'theme': themeMode.name,
       'haptics': haptics,
       'sound': sound,
@@ -118,15 +164,42 @@ class AppStore extends ChangeNotifier {
     return _pending;
   }
 
+  Future<void> setLanguage(String code) {
+    if (!AppLanguages.contains(code)) throw ArgumentError.value(code, 'code');
+    language = code;
+    return save();
+  }
+
+  Future<bool> setPlayerName(String? value) async {
+    final trimmed = value?.trim();
+    if (trimmed != null &&
+        (trimmed.isEmpty || trimmed.runes.length > maxPlayerNameLength)) {
+      return false;
+    }
+    playerName = trimmed;
+    await save();
+    return true;
+  }
+
+  Future<void> completeOnboarding() {
+    onboardingCompleted = true;
+    return save();
+  }
+
   Future<ProgressAward> record(GameSession session) async {
     final previousBest = stats.bestScore;
     final previousXp = stats.totalXp;
     final isNewBest = session.score > previousBest;
     final date = dateKey(session.startedAt);
+    final previousDaily = daily[date];
+    if (session.mode == GameMode.daily &&
+        (previousDaily?.attemptsUsed ?? 0) >= 3) {
+      throw StateError('Daily Challenge attempts exhausted for $date');
+    }
     final earnedXp = const XpPolicy().earned(
       session,
       isNewBest: isNewBest,
-      firstDailyCompletion: daily[date] == null,
+      firstDailyCompletion: (previousDaily?.attemptsUsed ?? 0) == 0,
     );
     stats.totalXp += earnedXp;
     adSchedule.completed(session.mode);
@@ -149,14 +222,22 @@ class AppStore extends ChangeNotifier {
           : 1;
       stats.lastPlayedDate = date;
     }
-    if (session.mode == GameMode.daily &&
-        (daily[date] == null || session.score > daily[date]!.score)) {
+    if (session.mode == GameMode.daily) {
+      final completedAttemptNo = (previousDaily?.attemptsUsed ?? 0) + 1;
+      final isDailyBest =
+          previousDaily == null || session.score > previousDaily.score;
       daily[date] = DailyChallengeResult(
         date,
-        session.score,
-        session.correctAnswers,
-        session.wrongAnswers,
+        isDailyBest ? session.score : previousDaily.score,
+        isDailyBest ? session.correctAnswers : previousDaily.correct,
+        isDailyBest ? session.wrongAnswers : previousDaily.wrong,
         true,
+        attemptsUsed: completedAttemptNo,
+        lastScore: session.score,
+        unlockedAttempts: previousDaily?.unlockedAttempts ?? 1,
+        bestAttemptNo: isDailyBest
+            ? completedAttemptNo
+            : previousDaily.bestAttemptNo,
       );
     }
     // Keep a bounded local history; aggregate statistics remain lifetime totals.

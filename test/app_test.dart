@@ -49,6 +49,7 @@ void main() {
         overrides: [preferencesProvider.overrideWithValue(prefs)],
       );
       container.read(storeProvider).language = language;
+      container.read(storeProvider).onboardingCompleted = true;
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
@@ -80,6 +81,7 @@ void main() {
         overrides: [preferencesProvider.overrideWithValue(prefs)],
       );
       container.read(storeProvider).language = language;
+      container.read(storeProvider).onboardingCompleted = true;
       final date = DateTime(2026, 9, 21);
       final session = GameSession(
         id: 'test',
@@ -148,6 +150,7 @@ void main() {
         ],
       );
       container.read(storeProvider).language = language;
+      container.read(storeProvider).onboardingCompleted = true;
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
@@ -213,6 +216,7 @@ void main() {
         ],
       );
       container.read(storeProvider).language = language;
+      container.read(storeProvider).onboardingCompleted = true;
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
@@ -271,6 +275,7 @@ void main() {
           overrides: [preferencesProvider.overrideWithValue(prefs)],
         );
         container.read(storeProvider).language = language;
+        container.read(storeProvider).onboardingCompleted = true;
         await tester.pumpWidget(
           UncontrolledProviderScope(
             container: container,
@@ -319,6 +324,7 @@ void main() {
         ),
       ],
     );
+    container.read(storeProvider).onboardingCompleted = true;
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,

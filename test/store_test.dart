@@ -121,6 +121,88 @@ void main() {
     store.dispose();
   });
 
+  test(
+    'Daily retries are gated, capped, and retain the best score and XP bonus',
+    () async {
+      final store = AppStore(await SharedPreferences.getInstance());
+      final date = DateTime(2026, 10, 1, 12);
+      expect(store.dailyStatus(date).attemptsRemaining, 3);
+      expect(store.canStartDaily(date, removeAdsOwned: false), isTrue);
+      final first = await store.record(session(date, 10, mode: GameMode.daily));
+      expect(first.earnedXp, 12 + 10 * 2 + 20 + 15);
+      expect(store.dailyStatus(date).attemptsUsed, 1);
+      expect(store.dailyStatus(date).bestAttemptNo, 1);
+      expect(store.dailyStatus(date).attemptsRemaining, 2);
+      expect(store.canStartDaily(date, removeAdsOwned: false), isFalse);
+      expect(store.canStartDaily(date, removeAdsOwned: true), isTrue);
+      expect(await store.unlockDailyRetry(date), isTrue);
+      expect(await store.unlockDailyRetry(date), isFalse);
+      expect(store.canStartDaily(date, removeAdsOwned: false), isTrue);
+      final second = await store.record(
+        session(date.add(const Duration(minutes: 1)), 5, mode: GameMode.daily),
+      );
+      expect(second.earnedXp, 12 + 5 * 2);
+      expect(store.dailyStatus(date).score, 10);
+      expect(store.dailyStatus(date).lastScore, 5);
+      expect(store.dailyStatus(date).bestAttemptNo, 1);
+      expect(store.dailyStatus(date).attemptsRemaining, 1);
+      expect(store.canStartDaily(date, removeAdsOwned: false), isFalse);
+      expect(await store.unlockDailyRetry(date), isTrue);
+      await store.record(
+        session(date.add(const Duration(minutes: 2)), 12, mode: GameMode.daily),
+      );
+      final result = store.dailyStatus(date);
+      expect(result.score, 12);
+      expect(result.lastScore, 12);
+      expect(result.attemptNumber, 3);
+      expect(result.bestAttemptNo, 3);
+      expect(result.attemptsRemaining, 0);
+      expect(store.canStartDaily(date, removeAdsOwned: false), isFalse);
+      expect(store.canStartDaily(date, removeAdsOwned: true), isFalse);
+      expect(await store.unlockDailyRetry(date), isFalse);
+      await expectLater(
+        store.record(
+          session(
+            date.add(const Duration(minutes: 3)),
+            100,
+            mode: GameMode.daily,
+          ),
+        ),
+        throwsStateError,
+      );
+      expect(store.dailyStatus(date).score, 12);
+      expect(store.adSchedule.normalGames, 0);
+      final nextDay = DateTime(2026, 10, 2, 0, 1);
+      expect(store.dailyStatus(nextDay).attemptsRemaining, 3);
+      expect(store.canStartDaily(nextDay, removeAdsOwned: false), isTrue);
+      SharedPreferences.resetStatic();
+      final restored = AppStore(await SharedPreferences.getInstance());
+      expect(restored.dailyStatus(date).attemptsUsed, 3);
+      expect(restored.dailyStatus(date).score, 12);
+      expect(restored.dailyStatus(date).bestAttemptNo, 3);
+      expect(restored.dailyStatus(nextDay).attemptsUsed, 0);
+      store.dispose();
+      restored.dispose();
+    },
+  );
+
+  test('legacy Daily result counts as one completed attempt', () async {
+    SharedPreferences.setMockInitialValues({
+      'brain_rush_v1': '{"stats":{},"daily":{"2026-10-01":{"date":"2026-10-01","score":9,"correct":9,"wrong":1,"completed":true}}}',
+    });
+    final store = AppStore(await SharedPreferences.getInstance());
+    final result = store.dailyStatus(DateTime(2026, 10, 1));
+    expect(result.attemptsUsed, 1);
+    expect(result.lastScore, 9);
+    expect(result.bestAttemptNo, 3);
+    expect(result.attemptsRemaining, 2);
+    expect(
+      store.canStartDaily(DateTime(2026, 10, 1), removeAdsOwned: false),
+      isFalse,
+    );
+    store.dispose();
+  });
+
   test('XP level and rank transitions derive from total XP', () {
     const policy = XpPolicy();
     expect(policy.levelFor(0), 1);

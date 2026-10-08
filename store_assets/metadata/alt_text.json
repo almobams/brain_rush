@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "notes": "Each screenshot entry applies to all explicitly listed Google Play asset paths.",
+  "locales": {
+    "en": {
+      "screenshots": [
+        {
+          "files": [
+            "final/android/en/phone/01_home.png",
+            "final/android/en/tablet_7/01_home.png",
+            "final/android/en/tablet_10/01_home.png"
+          ],
+          "alt": "Brain Rush home screen with the 60-second challenge button, level progress, Daily Challenge, best score, and daily streak."
+        },
+        {
+          "files": [
+            "final/android/en/phone/02_gameplay.png",
+            "final/android/en/tablet_7/02_gameplay.png",
+            "final/android/en/tablet_10/02_gameplay.png"
+          ],
+          "alt": "Brain Rush gameplay showing a mental math question, 44-second timer, score, streak multiplier, and four answers."
+        },
+        {
+          "files": [
+            "final/android/en/phone/03_challenges.png",
+            "final/android/en/tablet_7/03_challenges.png",
+            "final/android/en/tablet_10/03_challenges.png"
+          ],
+          "alt": "Brain Rush fraction challenge asking which of two fractions is larger while the round timer and streak remain visible."
+        },
+        {
+          "files": [
+            "final/android/en/phone/04_daily.png",
+            "final/android/en/tablet_7/04_daily.png",
+            "final/android/en/tablet_10/04_daily.png"
+          ],
+          "alt": "Daily Challenge screen with the current date, challenge description, attempt indicator, and start button."
+        },
+        {
+          "files": [
+            "final/android/en/phone/05_ranking.png",
+            "final/android/en/tablet_7/05_ranking.png",
+            "final/android/en/tablet_10/05_ranking.png"
+          ],
+          "alt": "Daily Challenge ranking screen showing rank 7, today's highest score, personal best, attempt progress, and replay controls."
+        },
+        {
+          "files": [
+            "final/android/en/phone/06_results.png",
+            "final/android/en/tablet_7/06_results.png",
+            "final/android/en/tablet_10/06_results.png"
+          ],
+          "alt": "Brain Rush results screen showing a new personal best of 34, accuracy, best streak, fast answers, earned XP, and level progress."
+        }
+      ],
+      "feature_graphic": {
+        "file": "final/android/feature_graphic_en.png",
+        "alt": "Brain Rush feature graphic with the game logo, Think Fast message, and genuine home and mental math gameplay screens."
+      }
+    },
+    "ar": {
+      "screenshots": [
+        {
+          "files": [
+            "final/android/ar/phone/01_home.png",
+            "final/android/ar/tablet_7/01_home.png",
+            "final/android/ar/tablet_10/01_home.png"
+          ],
+          "alt": "شاشة Brain Rush الرئيسية بالعربية وتعرض زر تحدي الستين ثانية وتقدم المستوى والتحدي اليومي وأفضل نتيجة والتتابع اليومي."
+        },
+        {
+          "files": [
+            "final/android/ar/phone/02_gameplay.png",
+            "final/android/ar/tablet_7/02_gameplay.png",
+            "final/android/ar/tablet_10/02_gameplay.png"
+          ],
+          "alt": "جولة Brain Rush بالعربية تعرض سؤال حساب ذهني ومؤقت 44 ثانية والنتيجة ومضاعف التتابع وأربع إجابات."
+        },
+        {
+          "files": [
+            "final/android/ar/phone/03_challenges.png",
+            "final/android/ar/tablet_7/03_challenges.png",
+            "final/android/ar/tablet_10/03_challenges.png"
+          ],
+          "alt": "تحدي كسور في Brain Rush بالعربية يطلب اختيار الكسر الأكبر مع ظهور المؤقت والتتابع."
+        },
+        {
+          "files": [
+            "final/android/ar/phone/04_daily.png",
+            "final/android/ar/tablet_7/04_daily.png",
+            "final/android/ar/tablet_10/04_daily.png"
+          ],
+          "alt": "شاشة التحدي اليومي بالعربية وتعرض التاريخ ووصف التحدي ومؤشر المحاولات وزر البدء."
+        },
+        {
+          "files": [
+            "final/android/ar/phone/05_ranking.png",
+            "final/android/ar/tablet_7/05_ranking.png",
+            "final/android/ar/tablet_10/05_ranking.png"
+          ],
+          "alt": "شاشة ترتيب التحدي اليومي بالعربية وتعرض المركز السابع وأعلى نتيجة وأفضل نتيجة شخصية والمحاولات المتبقية."
+        },
+        {
+          "files": [
+            "final/android/ar/phone/06_results.png",
+            "final/android/ar/tablet_7/06_results.png",
+            "final/android/ar/tablet_10/06_results.png"
+          ],
+          "alt": "شاشة نتائج Brain Rush بالعربية وتعرض أفضل نتيجة جديدة وهي 34 والدقة وأفضل تتابع والإجابات السريعة ونقاط الخبرة."
+        }
+      ],
+      "feature_graphic": {
+        "file": "final/android/feature_graphic_ar.png",
+        "alt": "رسم Brain Rush الترويجي بالعربية مع شعار اللعبة وعبارة فكّر بسرعة ولقطات حقيقية للشاشة الرئيسية والحساب الذهني."
+      }
+    }
+  }
+}
