@@ -2,4 +2,4 @@
 #include "Generated.xcconfig"
 
 // Set ADMOB_APP_ID to the real iOS AdMob app ID before enabling release ads.
-ADMOB_APP_ID=
+ADMOB_APP_ID=ca-app-pub-6099707331936840~7690514608
